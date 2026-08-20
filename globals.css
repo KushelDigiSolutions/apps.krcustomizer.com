@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+body {
+  background: #e4e9ec;
+  color: #1a1a1a;
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 100%;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-size: 20px !important;
+  line-height: 28px !important;
+  font-family: "Poppins", sans-serif !important;
+  font-weight: 500 !important;
+}
+
+p{
+  font-family: "Poppins", sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  line-height: 100% !important;
+}
+
+.container{
+  width: 100%;
+  max-width:1280px;
+  margin:0 auto;
+  padding:0 15px
+}
+
+.navbar-links{
+  font-size: 16px;
+  color:#1a1a1a;
+  padding: 12px 10px;
+  border-bottom: 2px solid transparent;
+}
+
+.navbar-links.nav-active{
+  border-bottom: 2px solid rgb(60, 100, 244);
+}
+
+.navbar-links:hover , .navbar-links.nav-active{
+  color: rgb(60, 100, 244);
+}
