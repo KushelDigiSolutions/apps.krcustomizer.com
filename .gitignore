@@ -1,0 +1,88 @@
+# ==========================================
+# Dependencies
+# ==========================================
+/node_modules
+/.pnp
+.pnp.js
+package-lock.json.bak
+
+# ==========================================
+# Next.js Build & Outputs
+# ==========================================
+/.next/
+/out/
+/build
+/dist
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
+/coverage
+*.lcov
+.nyc_output
+
+# ==========================================
+# Environment Variables & Secrets (CRITICAL)
+# ==========================================
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.cert
+
+# Keep example template committed
+!.env.example
+
+# ==========================================
+# Debug & Log Files
+# ==========================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# TypeScript & Cache
+# ==========================================
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
+
+# ==========================================
+# IDEs & Editor Configurations
+# ==========================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# OS Generated Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# ==========================================
+# Temporary & Archive Files
+# ==========================================
+*.zip
+*.tar.gz
+*.rar
+*.bak
+*.tmp
+*.swp
+*~
+scratch/
