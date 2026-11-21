@@ -1,0 +1,138 @@
+name: Apps Production CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - production
+      - main
+  pull_request:
+    branches:
+      - production
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate:
+    name: Code Quality & Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+  containerize:
+    name: Build & Push Distroless Container
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Metadata (Tags & Labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=commit-,format=short
+            type=raw,value=latest
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Zero-Code Deploy to Production Server
+    needs: containerize
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Deploy apps container via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            echo "Converting repository name to lowercase..."
+            REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            IMAGE_URI="ghcr.io/${REPO_LOWER}:latest"
+
+            echo "Authenticating to GHCR..."
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            echo "Ensuring private docker network exists..."
+            docker network create krc-network 2>/dev/null || true
+
+            echo "Pulling latest apps image..."
+            docker pull "${IMAGE_URI}"
+
+            echo "Stopping old apps container if running..."
+            docker stop krc-shopify 2>/dev/null || true
+            docker rm krc-shopify 2>/dev/null || true
+
+            echo "Launching krc-shopify on isolated port 3005..."
+            docker run -d \
+              --name krc-shopify \
+              --restart unless-stopped \
+              --network krc-network \
+              -p 127.0.0.1:3005:3000 \
+              -e PORT=3000 \
+              -e NODE_ENV=production \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e SHOPIFY_API_KEY="${{ secrets.SHOPIFY_API_KEY }}" \
+              -e SHOPIFY_API_SECRET="${{ secrets.SHOPIFY_API_SECRET }}" \
+              -e NEXT_PUBLIC_SHOPIFY_API_KEY="${{ secrets.NEXT_PUBLIC_SHOPIFY_API_KEY }}" \
+              -e SHOPIFY_APP_URL="${{ secrets.SHOPIFY_APP_URL }}" \
+              -e SHOPIFY_API_SCOPES="${{ secrets.SHOPIFY_API_SCOPES }}" \
+              -e SHOPIFY_API_VERSION="${{ secrets.SHOPIFY_API_VERSION }}" \
+              -e STORE_API_ENDPOINT="${{ secrets.STORE_API_ENDPOINT }}" \
+              -e STORE_API_TOKEN="${{ secrets.STORE_API_TOKEN }}" \
+              -e CUSTOMIZER_FRONTEND_URL="${{ secrets.CUSTOMIZER_FRONTEND_URL }}" \
+              "${IMAGE_URI}"
+
+            echo "Waiting for apps container warmup..."
+            sleep 4
+
+            echo "Validating health check..."
+            curl -I http://127.0.0.1:3005 || exit 1
+
+            echo "Cleaning dangling images..."
+            docker image prune -f
+
+            echo "SUCCESS: krc-shopify is live on port 3005 with 0 code and 0 .env on server!"
