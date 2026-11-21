@@ -17,6 +17,9 @@ FROM node:20-bookworm-slim AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
+ARG NEXT_PUBLIC_SHOPIFY_API_KEY
+ENV NEXT_PUBLIC_SHOPIFY_API_KEY=$NEXT_PUBLIC_SHOPIFY_API_KEY
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
